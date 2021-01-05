@@ -22,7 +22,7 @@ typedef struct {
 } ht_callbacks;
 
 htable_t *ht_create(ht_hash hfunc, ht_kcmp kcmp, ht_callbacks *cbs);
-void ht_destrpy(htable_t *ht);
+void ht_destroy(htable_t *ht);
 
 void ht_insert(htable_t *ht, void *key, void *val);
 void ht_remove(htable_t *ht, void *key);

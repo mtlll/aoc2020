@@ -3,4 +3,4 @@ project(aoc C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(aoc main.c util/htable.c util/htable.h day4.c day3.c day2.c day1.c days.h day5.c util/io.c util/io.h)
+add_executable(aoc main.c util/htable.c util/htable.h day4.c day3.c day2.c day1.c days.h day5.c util/io.c util/io.h day6.c day8.c day9.c)

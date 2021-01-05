@@ -8,10 +8,7 @@ static void run_day(int n);
 int main(int argc, char **argv)
 {
     init_days();
-
-    run_day(5);
-    return 0;
-
+    days[d9]();
     if (argc < 2) {
         printf("Please input days to run. E.g %s 1 2 3", argv[0]);
         return 0;
@@ -20,7 +17,7 @@ int main(int argc, char **argv)
 
     int i, day;
 
-    for (i = 0; i < argc; i += 1) {
+    for (i = 1; i < argc; i += 1) {
         day = atoi(argv[i]);
         printf("Day %d:", day);
         run_day(day);
@@ -39,5 +36,5 @@ static void run_day(int n)
     } else {
         printf(" No solution for this day yet. \n");
     }
-}
 
+}

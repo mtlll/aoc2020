@@ -10,8 +10,13 @@ void day2();
 void day3();
 void day4();
 void day5();
+void day6();
+
+void day8();
+void day9();
 
 void (*days[25])();
+
 /* not sure if there's a cleaner way to do this in C. Add every day function to the global array of function pointers */
 enum day {
     d1,
@@ -48,7 +53,10 @@ static inline void init_days()
     days[d3] = day3;
     days[d4] = day4;
     days[d5] = day5;
+    days[d6] = day6;
 
+    days[d8] = day8;
+    days[d9] = day9;
 }
 
 #endif //AOC_DAYS_H

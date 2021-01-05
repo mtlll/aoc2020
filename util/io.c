@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "io.h"
+#include <assert.h>
+#include <stdbool.h>
 
 FILE *fopen_in_path(const char *path, const char *filename, const char *modes)
 {
@@ -87,3 +87,41 @@ size_t get_lines(FILE *f, char ***res)
     *res = ret;
     return nlines;
 }
+
+/* read all of f into newly allocated buffer, discarding characters in discard */
+char *fslurp(FILE *f, const char *discard)
+{
+    if (f == NULL) return NULL;
+
+    size_t bufsize = 256;
+    char *buf = calloc(bufsize + 1, sizeof (char));
+
+    if (buf == NULL) return NULL;
+
+    int c;
+    size_t i = 0;
+
+    while ((c = fgetc(f)) != EOF) {
+        if (discard != NULL && strchr(discard, c)) {
+            continue;
+        }
+
+        if (i == bufsize) {
+            bufsize <<= 1;
+            buf = realloc(buf, bufsize + 1);
+            if (buf == NULL) return NULL;
+        }
+        buf[i++] = c;
+    }
+
+    assert(i <= bufsize);
+
+    if (i < bufsize) {
+        buf = realloc(buf, i + 1);
+    }
+
+    buf[i] = '\0';
+
+    return buf;
+}
+
