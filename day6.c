@@ -1,87 +1,124 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/io.h"
 #include "util/htable.h"
+#include "util/io.h"
+#include "util/vec.h"
+#include "day.h"
 
-static char *get_input(char *filename)
+typedef struct {
+    size_t nlines;
+    char **lines;
+} input;
+
+static void freeinput(void *in)
 {
-    FILE *f = fopen_in_path("../inputs/day6/", filename, "r");
+	input *inp = in;
 
-    //fuck Windows
-    char *s = fslurp(f, "\r");
+	for (size_t i = 0; i < inp->nlines; i += 1) {
+		free(inp->lines[i]);
+	}
 
-    fclose(f);
-    return s;
+	free(inp);
 }
-
-static int part1(char *input)
+static void *getinput(char *filename)
 {
-    char *seen = calloc(28, sizeof (char));
-    int count = 0;
-    int res = 0;
+	FILE *f = fopen_in_path("../inputs/day6/", filename, "r");
+	char *s = fslurp(f, "\r");
+	fclose(f);
 
-    char **w = &input;
-    char *tok;
+	input *res = malloc(sizeof (input));
+	vec_callbacks cbs = {strdup, NULL};
 
-    while ((tok = strsep(w, "\n"))) {
-        if (*tok == '\0') {
-           res += count;
-           bzero(seen, count);
-           count = 0;
-           continue;
-        }
+	vec_t *lines = vec_create(&cbs);
+	char *w = s;
+	char *tok;
 
-        for (tok += strspn(tok, seen); *tok != '\0'; tok += strspn(tok, seen)) {
-            seen[count++] = *tok;
-        }
-    }
+	while ((tok = strsep(&w, "\n"))) {
+		vec_push(lines, tok);
+	}
 
-    return res;
+	res->nlines = vec_collect(lines, (void ***)&res->lines);
+
+	free(s);
+
+	return (void *)res;
 }
 
-static void swap(char *a, char *b) {
-    if (a != b) {
-        char tmp = *a;
-        *a = *b;
-        *b = tmp;
-    }
-}
-
-static int part2(char *input)
+static result *part1(void *data)
 {
-    char *seen = NULL;
-    int res = 0;
+	input *inp = data;
+	size_t nlines = inp->nlines;
+	char *seen = calloc(28, sizeof(char));
+	uint64_t count = 0;
+	uint64_t res = 0;
 
-    char **w = &input;
-    char *tok;
+	char *tok;
 
-    while ((tok = strsep(w,"\n"))) {
-        if (*tok == '\0') {
-            res += strlen(seen);
-            seen = NULL;
-            continue;
-        } else if (seen == NULL) {
-            seen = tok;
-            continue;
-        }
+	for (size_t i = 0; i < nlines; i += 1) {
+		tok = inp->lines[i];
 
-        for (char *s = seen; *s; s += 1) {
-            if (!strchr(tok, *s)) {
-                swap(seen++, s);
-            }
-        }
-    }
+		if (*tok == '\0') {
+			res += count;
+			bzero(seen, count);
+			count = 0;
+			continue;
+		}
 
-    return res;
+		for (tok += strspn(tok, seen); *tok != '\0'; tok += strspn(tok, seen)) {
+			seen[count++] = *tok;
+		}
+	}
+
+	free(seen);
+	return_result(res);
 }
-void day6()
+
+static void swap(char *a, char *b)
 {
-    char *s = get_input("input");
-
-    printf("\tPart 2 input: %d\n", part2(s));
-
-    free(s);
+	if (a != b) {
+		char tmp = *a;
+		*a = *b;
+		*b = tmp;
+	}
 }
+
+static result *part2(void *data)
+{
+	input *inp = data;
+	size_t nlines = inp->nlines;
+
+	char *seen = NULL;
+	uint64_t res = 0;
+	char *tok;
+
+	for (size_t i = 0; i < nlines; i += 1) {
+		tok = inp->lines[i];
+		if (*tok == '\0') {
+			res += strlen(seen);
+			seen = NULL;
+			continue;
+		} else if (seen == NULL) {
+			seen = tok;
+			continue;
+		}
+
+		for (char *s = seen; *s; s += 1) {
+			if (!strchr(tok, *s)) {
+				swap(seen++, s);
+			}
+		}
+	}
+
+	return_result(res);
+}
+
+day day6 = {
+	getinput,
+	part1,
+	part2,
+	freeinput
+};
 

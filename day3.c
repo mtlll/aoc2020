@@ -2,133 +2,72 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "util/io.h"
+#include "day.h"
 
 #define TREE '#'
 
-static size_t getinput(const char *filename, char ***map)
-{
-    char path[32] = "../inputs/day3/";
-    strcat(path, filename);
-    FILE *f = fopen(path, "r");
-    char **res = NULL;
-    int i, j;
-
-    if (f == NULL) {
-        *map = NULL;
-        return -1;
-    }
-
-    //count lines
-    int c;
-    size_t nlines = 0;
-    size_t nrows = 0;
-
-    while ((c = fgetc(f)) != '\n' && c != '\r') {
-        nrows += 1;
-    }
-
-    do {
-        if (c == '\n') {
-            nlines += 1;
-        }
-    } while ((c = fgetc(f)) != EOF);
-
-    rewind(f);
-
-    char square;
-    res = (char **) calloc(nlines + 1, sizeof (char **));
-    for (i = 0; i < nlines; i += 1) {
-        res[i] = (char *) calloc(nrows, sizeof (char));
-        fread(res[i], sizeof (char), nrows, f);
-        //Because of Windows, it's unclear whether the line ending is LF or CRLF,
-        //so use fscanf behaviour to read past the whitespace either way
-        fscanf(f, "\n");
-    }
-    res[nlines] = NULL;
-
-    fclose(f);
-    *map = res;
-    return nrows;
-}
-
-static int count_trees(char **map, size_t nlines, size_t nrows, int linestep, int rowstep)
-{
-    int i, j;
-    int res = 0;
-    for (i = 0, j = 0; i < nlines; i += linestep, j = (j + rowstep) % nrows) {
-        if (map[i][j] == TREE) {
-            res += 1;
-        }
-    }
-    return res;
-}
-
-static int part1(const char *filename)
-{
-    char **map;
+typedef struct {
+    size_t nlines;
     size_t nrows;
-    size_t nlines = 0;
-    int res = 0;
-
-    int i, j;
-    nrows = getinput(filename, &map);
-
-    if (map == NULL || nrows == 0) {
-        goto ret;
-    }
-
-    for (i = 0; map[i] != NULL; i += 1) {
-        nlines += 1;
-    }
-
-    res = count_trees(map, nlines, nrows, 1, 3);
-
-    ret:
-    for (i = 0; map[i] != NULL; i += 1) {
-        free(map[i]);
-    }
-
-    free(map);
-
-    return res;
-}
-
-static long part2 (const char *filename) {
-    char **map;
-    int nrows;
-    int nlines = 0;
-    long res = 1; //start at 1 since we're multiplying.
-    int i;
-    nrows = getinput(filename, &map);
-
-    if (map == NULL || nrows == 0) {
-        goto ret;
-    }
-
-    for (i = 0; map[i] != NULL; i += 1) {
-        nlines += 1;
-    }
-
-    res *= count_trees(map, nlines, nrows, 1, 1);
-    res *= count_trees(map, nlines, nrows, 1, 3);
-    res *= count_trees(map, nlines, nrows, 1, 5);
-    res *= count_trees(map, nlines, nrows, 1, 7);
-    res *= count_trees(map, nlines, nrows, 2, 1);
-
-    ret:
-    for (i = 0; map[i] != NULL; i += 1) {
-        free(map[i]);
-    }
-
-    free(map);
-
-    return res;
-}
-
-void day3()
+    char **m;
+} map;
+static void freeinput(void *in)
 {
-    printf("\tPart 1 example: %d\n", part1("example"));
-    printf("\tPart 1 puzzle input: %d\n", part1("input"));
-    printf("\tPart 2 example: %ld\n", part2("example"));
-    printf("\tPart 2 puzzle input: %ld\n", part2("input"));
+	map *map = in;
+	for (size_t i = 0; i < map->nlines; i += 1) {
+		free(map->m[i]);
+	}
+	free(map);
 }
+static void *getinput(char *filename)
+{
+	map *r = malloc(sizeof (map));
+	FILE *f = fopen_in_path("../inputs/day3/", filename, "r");
+	r->nlines = get_lines(f, &r->m);
+	r->nrows = strlen(r->m[0]);
+	fclose(f);
+
+	return (void *)r;
+}
+
+static unsigned long count_trees(map *map, size_t linestep, size_t rowstep)
+{
+	char **m = map->m;
+	size_t nl = map->nlines;
+	size_t nr = map->nrows;
+	size_t i, j;
+	unsigned long res = 0;
+	for (i = j = 0; i < nl; i += linestep, j = (j + rowstep) % nr) {
+		if (m[i][j] == TREE) {
+			res += 1;
+		}
+	}
+	return res;
+}
+
+static result *part1(void *data)
+{
+	return_result(count_trees((map *)data, 1, 3));
+}
+
+static result *part2(void *data)
+{
+	unsigned long res = 1;
+	map *map = data;
+
+	res *= count_trees(map, 1, 1);
+	res *= count_trees(map, 1, 3);
+	res *= count_trees(map, 1, 5);
+	res *= count_trees(map, 1, 7);
+	res *= count_trees(map, 2, 1);
+
+	return_result(res);
+}
+
+day day3 = {
+	getinput,
+	part1,
+	part2,
+	freeinput
+};

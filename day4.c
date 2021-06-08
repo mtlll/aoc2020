@@ -1,308 +1,282 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-struct passport {
+#include "util/io.h"
+#include "util/vec.h"
+#include "day.h"
+
+typedef struct passport {
     char *fields[8];
     size_t present;
     size_t valid;
-};
+} passport;
 
-typedef enum {byr, iyr, eyr, hgt, hcl, ecl, pid, cid} field;
-static char fieldnames[8][4] = {"byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid", "cid"};
+typedef enum {
+    byr,
+    iyr,
+    eyr,
+    hgt,
+    hcl,
+    ecl,
+    pid,
+    cid
+} field;
+static char fieldnames[8][4] = {"byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid",
+				"cid"};
 
-static field stofield (const char *s)
+static field stofield(char *s)
 {
-    field ret;
+	field ret;
 
-    for (ret = byr; strcmp(s, fieldnames[ret]) != 0; ret += 1)
-        ;
+	for (ret = byr; strcmp(s, fieldnames[ret]) != 0; ret += 1);
 
-    return ret;
+	return ret;
 }
 
-static bool byr_valid(char *s) {
-    int year = atoi(s);
+static bool byr_valid(char *s)
+{
+	int year = atoi(s);
 
-    if (year >= 1920 && year <= 2002) {
-        return true;
-    } else {
-        return false;
-    }
+	if (year >= 1920 && year <= 2002) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
-static bool iyr_valid(char *s) {
-    int year = atoi(s);
+static bool iyr_valid(char *s)
+{
+	int year = atoi(s);
 
-    if (year >= 2010 && year <= 2020) {
-        return true;
-    } else {
-        return false;
-    }
+	if (year >= 2010 && year <= 2020) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
-static bool eyr_valid(char *s) {
-    int year = atoi(s);
+static bool eyr_valid(char *s)
+{
+	int year = atoi(s);
 
-    if (year >= 2020 && year <= 2030) {
-        return true;
-    } else {
-        return false;
-    }
+	if (year >= 2020 && year <= 2030) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
-static bool hgt_valid(char *s) {
-    int height;
-    char unit[3];
+static bool hgt_valid(char *s)
+{
+	int height;
+	char unit[3];
 
-    sscanf(s, "%d%2s", &height, unit);
+	sscanf(s, "%d%2s", &height, unit);
 
-    if (strcmp(unit, "cm") == 0 && height >= 150 && height <= 193) {
-        return true;
-    } else if (strcmp(unit, "in") == 0 && height >=59 && height <= 76) {
-        return true;
-    } else {
-        return false;
-    }
+	if (strcmp(unit, "cm") == 0 && height >= 150 && height <= 193) {
+		return true;
+	} else if (strcmp(unit, "in") == 0 && height >= 59 && height <= 76) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
-static bool hcl_valid(char *s) {
-    int i;
+static bool hcl_valid(char *s)
+{
+	int i;
 
-    if (*s++ != '#') {
-        return false;
-    }
+	if (*s++ != '#') {
+		return false;
+	}
 
-    for (i = 0; i < 6; i += 1) {
-        if (!isxdigit(s[i])) {
-            return false;
-        }
-    }
+	for (i = 0; i < 6; i += 1) {
+		if (!isxdigit(s[i])) {
+			return false;
+		}
+	}
 
-    if (s[i] != '\0') {
-        return false;
-    }
+	if (s[i] != '\0') {
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
-static bool ecl_valid(char *s) {
-    if (strlen(s) != 3) {
-        return false;
-    }
+static bool ecl_valid(char *s)
+{
+	if (strlen(s) != 3) {
+		return false;
+	}
 
-    if (strcmp(s, "amb") == 0) {
-        return true;
-    } else if (strcmp(s, "blu") == 0) {
-        return true;
-    } else if (strcmp(s, "brn") == 0) {
-        return true;
-    } else if (strcmp(s, "gry") == 0) {
-        return true;
-    } else if (strcmp(s, "grn") == 0) {
-        return true;
-    } else if (strcmp(s, "hzl") == 0) {
-        return true;
-    } else if (strcmp(s, "oth") == 0) {
-        return true;
-    } else {
-        return false;
-    }
+	if (strcmp(s, "amb") == 0) {
+		return true;
+	} else if (strcmp(s, "blu") == 0) {
+		return true;
+	} else if (strcmp(s, "brn") == 0) {
+		return true;
+	} else if (strcmp(s, "gry") == 0) {
+		return true;
+	} else if (strcmp(s, "grn") == 0) {
+		return true;
+	} else if (strcmp(s, "hzl") == 0) {
+		return true;
+	} else if (strcmp(s, "oth") == 0) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
 static bool pid_valid(char *s)
 {
-    int i;
+	int i;
 
-    for (i = 0; s[i] != '\0'; i += 1) {
-        if (!isdigit(s[i])) {
-            return false;
-        }
-    }
+	for (i = 0; s[i] != '\0'; i += 1) {
+		if (!isdigit(s[i])) {
+			return false;
+		}
+	}
 
-    if (i != 9) {
-        return false;
-    }
+	if (i != 9) {
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
-static bool (*validate[7])(char *) = {byr_valid, iyr_valid, eyr_valid, hgt_valid, hcl_valid, ecl_valid, pid_valid};
+static bool
+(*validate[7])(char *) = {byr_valid, iyr_valid, eyr_valid, hgt_valid, hcl_valid,
+			  ecl_valid, pid_valid};
 
-static void print_passport(struct passport *p)
+static void print_passport(passport *p)
 {
-    field i;
+	field i;
 
-    for (i = byr; i <= cid; i += 1) {
-        if (p->fields[i] != NULL) {
-            printf("%s:%s ", fieldnames[i], p->fields[i]);
-        }
-    }
+	for (i = byr; i <= cid; i += 1) {
+		if (p->fields[i] != NULL) {
+			printf("%s:%s ", fieldnames[i], p->fields[i]);
+		}
+	}
 
-    printf("present:%d, valid:%d", p->present, p->valid);
+	printf("present:%lu, valid:%lu", p->present, p->valid);
 }
 
-typedef enum {fieldname, fieldval, whitespace, cont, newline} state;
+typedef enum {
+    fieldname,
+    fieldval,
+    whitespace,
+    cont,
+    newline
+} state;
 
-static size_t getinput(const char *filename, struct passport **pp)
+typedef struct {
+    size_t npp;
+    passport **passports;
+} input;
+
+static void freeinput(void *in)
 {
-    char path[32] = "../inputs/day4/";
-    strcat(path, filename);
-    FILE *f = fopen(path, "r");
+	input *inp = in;
 
-    if (f == NULL) {
-        *pp = NULL;
-        return 0;
-    }
+	for (size_t i = 0; i < inp->npp; i += 1) {
+		for (size_t j = 0; j < 8; j += 1) {
+			free(inp->passports[i]->fields[j]);
+		}
+		free(inp->passports[i]);
+	}
 
-    size_t npp = 0;
-    int c = 0;
-    state s = cont;
-    while ((c = fgetc(f)) != EOF) {
-        switch (s) {
-            case cont:
-                if (c == '\n') {
-                    s = newline;
-                }
-                break;
-            case newline:
-                if (c == '\n') {
-                    npp += 1;
-                    s = cont;
-                } else if (c != '\r') {
-                    s = cont;
-                }
+	free(inp);
 
-        }
-    }
-
-    rewind(f);
-
-    struct passport *res = (struct passport *)calloc(npp, sizeof (struct passport));
-    struct passport *cur = res;
-    char head[4];
-    head[3] = '\0';
-    size_t i = 0;
-    size_t j = 0;
-    field fi;
-
-    char *buf = (char *)calloc(64, sizeof (char));
-    s = fieldname;
-
-    while ((c = fgetc(f)) != EOF) {
-        switch(s) {
-            case fieldname:
-                if (c == ':') {
-                    fi = stofield(head);
-                    i = 0;
-                    s = fieldval;
-                } else {
-                    head[i++] = c;
-                }
-                break;
-            case fieldval:
-                if (!isspace(c)) {
-                    buf[j++] = c;
-                    break;
-                } else {
-                    buf[j] = '\0';
-                    cur->fields[fi] = strdup(buf);
-                    cur->present += 1;
-                    if (fi != cid) {
-                        cur->valid += (*validate[fi])(buf);
-                    }
-                    j = 0;
-                }
-            case whitespace:
-                if (c == '\r') {
-                    s = whitespace;
-                } else if (c == '\n') {
-                    s = newline;
-                } else {
-                    s = fieldname;
-                }
-                break;
-            case newline:
-                if (c == '\r') {
-                    continue;
-                } else if (c == '\n') {
-                    cur += 1;
-                } else {
-                    head[i++] = c;
-                }
-                s = fieldname;
-                break;
-
-        }
-    }
-
-    rewind(f);
-    //fclose(f);
-    //free(buf);
-    *pp = res;
-    return npp;
 }
-
-static int part1(const char *filename) {
-    struct passport *pp;
-    size_t npp, i;
-    int count = 0;
-
-    npp = getinput(filename, &pp);
-
-    if (npp == 0 || pp == NULL) {
-        return 0;
-    }
-
-    for (i = 0; i < npp; i += 1) {
-        print_passport(&pp[i]);
-        if (pp[i].present == 8) {
-            printf(" VALID\n");
-            count += 1;
-        } else if (pp[i].present == 7 && pp[i].fields[cid] == NULL) {
-            printf(" VALID\n");
-            count += 1;
-        } else {
-            printf(" INVALID\n");
-        }
-
-    }
-
-    return count;
-}
-
-static int part2(const char *filename) {
-    struct passport *pp;
-    size_t npp, i;
-    int count = 0;
-
-    npp = getinput(filename, &pp);
-
-    if (npp == 0 || pp == NULL) {
-        return 0;
-    }
-
-    for (i = 0; i < npp; i += 1) {
-        print_passport(&pp[i]);
-        if (pp[i].valid == 7) {
-            printf(" VALID\n");
-            count += 1;
-        } else {
-            printf(" INVALID\n");
-        }
-
-    }
-
-    return count;
-}
-
-void day4()
+static void *getinput(char *filename)
 {
-    printf("\tPart 1 example: %d\n", part1("example"));
-    printf("\tPart 1 puzzle input: %d\n", part1("input"));
-    printf("\tPart 2 invalid: %d\n", part2("invalid"));
-    printf("\tPart 2 valid: %d\n", part2("valid"));
-    printf("\tPart 2 puzzle input: %d\n", part2("input"));
+	FILE *f = fopen_in_path("../inputs/day4/", filename, "r");
+	char *s = fslurp(f, "\r");
+	fclose(f);
+
+
+	char *tok, *w, *fld;
+	w = s;
+
+	vec_t *vec = vec_create(NULL);
+	passport *p = calloc(1, sizeof (passport));
+	field fi;
+
+	while ((tok = strsep(&w, "\n\t "))) {
+		if (*tok == '\0') {
+			vec_push(vec, (void *)p);
+			if (*(s + 1) == '\0') {
+				break;
+			}
+			p = calloc(1, sizeof (passport));
+			continue;
+
+		}
+		fi = stofield(strsep(&tok, ":"));
+		p->fields[fi] = strdup(tok);
+		p->present += 1;
+		if (fi != cid) {
+			p->valid += validate[fi](tok);
+		}
+
+	}
+
+	free(s);
+	input *res = malloc(sizeof (input));
+	res->npp = vec_collect(vec, (void ***)&res->passports);
+
+	return (void *)res;
 }
+
+
+static result *part1(void *data)
+{
+	input *inp = data;
+	size_t npp = inp->npp;
+	passport **passports = inp->passports;
+
+	uint64_t count = 0;
+	passport *p;
+
+	for (size_t i = 0; i < npp; i += 1) {
+		p = passports[i];
+		if (p->present == 8) {
+			count += 1;
+		} else if (p->present == 7 && p->fields[cid] == NULL) {
+			count += 1;
+		}
+	}
+
+	return_result(count);
+}
+
+static result *part2(void *data)
+{
+	input *inp = data;
+	size_t npp = inp->npp;
+	passport **passports = inp->passports;
+
+	uint64_t count = 0;
+	passport *p;
+
+	for (size_t i = 0; i < npp; i += 1) {
+		p = passports[i];
+		if (p->valid == 7) {
+			count += 1;
+		}
+	}
+
+	return_result(count);
+}
+
+day day4 = {
+	getinput,
+	part1,
+	part2,
+	freeinput,
+};

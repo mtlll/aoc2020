@@ -1,172 +1,169 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "util/io.h"
+#include "day.h"
 
 typedef enum {
-    nul, nop, acc, jmp
-} opcode ;
+    NUL = 0,
+    NOP,
+    ACC,
+    JMP
+} opcode;
 
 static char *opnames[] = {"nul", "nop", "acc", "jmp"};
 
 typedef struct {
     opcode op;
-    int argument;
-    int accum;
+    int64_t arg;
+    int64_t acc;
     bool seen;
 } instruction;
 
 static void printi(size_t ip, instruction *p)
 {
-    printf("%lu: %s %d\n", ip, opnames[p->op], p->argument);
-}
-opcode parse_opcode(char *s) {
-    if (strcmp(s, "nop") == 0) {
-        return nop;
-    } else if (strcmp(s, "acc") == 0) {
-        return acc;
-    } else if (strcmp(s, "jmp") == 0) {
-        return jmp;
-    }
+	printf("%lu: %s %d\n", ip, opnames[p->op], p->arg);
 }
 
-static size_t getinput(char *filename, instruction **program)
+void parse_instruction(char *s, instruction *inst)
 {
-    FILE *f = fopen_in_path("../inputs/day8/", filename, "r");
-    char *s = fslurp(f, "\r");
-    fclose(f);
-    char *w = s;
-    char *tok;
-    size_t bufsize = 128;
-    size_t i = 0;
-    char opname[4];
+	if (strncmp(s, "nop", 3) == 0) {
+		inst->op = NOP;
+	} else if (strncmp(s, "acc", 3) == 0) {
+		inst->op = ACC;
+	} else if (strncmp(s, "jmp", 3) == 0) {
+		inst->op = JMP;
+	}
 
-    instruction *ret = calloc(bufsize + 1, sizeof (instruction));
-
-    while (*(tok = strsep(&w, "\n"))) {
-        if (i == bufsize) {
-            bufsize <<= 1;
-            ret = reallocarray(ret, bufsize + 1, sizeof (instruction));
-        }
-
-        sscanf(tok, "%3s %d", opname, &ret[i].argument);
-        ret[i].op = parse_opcode(opname);
-        ret[i].seen = false;
-        i += 1;
-    }
-
-    if (i < bufsize) {
-        ret = reallocarray(ret, i + 1, sizeof (instruction));
-    }
-    ret[i].op = nul;
-    ret[i].seen = false;
-
-    free(s);
-
-    *program = ret;
-    return i + 1;
+	inst->arg = strtol(s + 4, NULL, 10);
 }
 
-static bool exec_op(opcode op, int arg, int *accum, size_t *ip)
+typedef struct {
+    size_t ninstructions;
+    instruction program[];
+} input;
+
+static void *getinput(char *filename)
 {
-           switch (op) {
-            case acc:
-                *accum += arg;
-            case nop:
-                *ip += 1;
-                break;
-            case jmp:
-                *ip += arg;
-                break;
-            case nul:
-                return true;
-        }
+	FILE *f = fopen_in_path("../inputs/day8/", filename, "r");
+	char **lines;
+	size_t nlines = get_lines(f, &lines);
+	fclose(f);
 
-        return false;
+	input *res = calloc(1, sizeof (input) + sizeof (instruction[nlines + 1]));
+
+	for (size_t i = 0; i < nlines; i += 1) {
+		parse_instruction(lines[i], res->program + i);
+		free(lines[i]);
+	}
+	free(lines);
+
+	res->ninstructions = nlines + 1;
+	return (void *)res;
 }
 
-static int part1(size_t n, instruction *program)
+static bool exec_op(opcode op, int64_t arg, int64_t *acc, size_t *ip)
 {
-    int accum = 0;
-    size_t ip = 0;
-    instruction *p;
+	switch (op) {
+		case ACC:
+			*acc += arg;
+		case NOP:
+			*ip += 1;
+			break;
+		case JMP:
+			*ip += arg;
+			break;
+		case NUL:
+			return true;
+	}
 
-    for (;;) {
-        p = program + ip;
-
-        if (p->seen) {
-            return accum;
-        } else {
-            p->accum = accum;
-            p->seen = true;
-        }
-
-        exec_op(p->op, p->argument, &accum, &ip);
-    }
-
+	return false;
 }
-static int part2(size_t n, instruction *program)
+
+static result *part1(void *data)
 {
-    int accum = 0;
-    size_t ip = 0;
+	input *inp = data;
+	instruction *program = inp->program;
+	int64_t acc = 0;
+	size_t ip = 0;
+	instruction *p;
 
-    size_t *to_try = calloc(n, sizeof (size_t));
+	for (;;) {
+		p = program + ip;
 
-    size_t ntry;
-    size_t i;
-    instruction *p;
+		if (p->seen) {
+			break;
+		} else {
+			p->acc = acc;
+			p->seen = true;
+		}
 
-    /* Enumerate all the instructions we need to try to flip.
-     * Since we can only flip one instruction,
-     * it only makes sense to try the ones executed in part 1.
-     * They've been tagged for us already by part 1 */
-    for (i = 0, ntry = 0; i < n; i += 1) {
-        p = &program[i];
+		exec_op(p->op, p->arg, &acc, &ip);
+	}
 
-        if (p->seen && (p->op == nop ||p->op == jmp)) {
-            to_try[ntry] = i;
-            ntry += 1;
-        }
-    }
-
-    for (i = 0; i < ntry; i += 1) {
-        ip = to_try[i];
-        p = program + ip;
-        accum = p->accum;
-        if (exec_op(p->op == jmp ? nop : jmp, p->argument, &accum, &ip)){
-            return accum;
-        }
-
-        for (;;) {
-            if (ip > n || (p = program + ip)->seen) {
-                break;
-            } else {
-                p->seen = true;
-                p->accum = accum;
-            }
-
-            if (exec_op(p->op, p->argument, &accum, &ip)) {
-                return accum;
-            }
-        }
-    }
-
-    return -1;
+	return_result(acc);
 }
 
-void day8()
+static result *part2(void *data)
 {
-    instruction *program;
-    size_t ninstructions = getinput("example", &program);
-    printf("\tPart 1 example: %d\n", part1(ninstructions, program));
-    printf("\tPart 2 example: %d\n", part2(ninstructions, program));
+	int64_t acc = 0;
+	size_t ip = 0;
 
-    free(program);
+	input *inp = data;
+	size_t n = inp->ninstructions;
+	instruction *program = inp->program;
 
-    ninstructions = getinput("input", &program);
-    printf("\tPart 1 input: %d\n", part1(ninstructions, program));
-    printf("\tPart 2 input: %d\n", part2(ninstructions, program));
+	size_t *to_try = calloc(n, sizeof(size_t));
 
-    free(program);
+	size_t ntry;
+	size_t i;
+	instruction *p;
+
+	/* Enumerate all the instructions we need to try to flip.
+	 * Since we can only flip one instruction,
+     	 * it only makes sense to try the ones executed in part 1.
+     	 * They've been tagged for us already by part 1 */
+	for (i = 0, ntry = 0; i < n; i += 1) {
+		p = &program[i];
+
+		if (p->seen && (p->op == NOP || p->op == JMP)) {
+			to_try[ntry] = i;
+			ntry += 1;
+		}
+	}
+
+	for (i = 0; i < ntry; i += 1) {
+		ip = to_try[i];
+		p = program + ip;
+		acc = p->acc;
+		if (exec_op(p->op == JMP ? NOP : JMP, p->arg, &acc, &ip)) {
+			goto ret;
+		}
+
+		for (;;) {
+			if (ip > n || (p = program + ip)->seen) {
+				break;
+			} else {
+				p->seen = true;
+				p->acc = acc;
+			}
+
+			if (exec_op(p->op, p->arg, &acc, &ip)) {
+				goto ret;
+			}
+		}
+	}
+
+	ret:
+	free(to_try);
+	return_result(acc);
 }
+
+day day8 = {
+	getinput,
+	part1,
+	part2,
+	free
+};

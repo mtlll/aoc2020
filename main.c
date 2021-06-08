@@ -1,40 +1,74 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include <dirent.h>
+#include "day.h"
+#include "flags.h"
 
-#include "days.h"
+static void parseargs(int argc, char **argv);
+static void print_help(const char *invname);
 
-static void run_day(int n);
+
+
+uint8_t flags;
 
 int main(int argc, char **argv)
 {
-    init_days();
-    days[d9]();
-    if (argc < 2) {
-        printf("Please input days to run. E.g %s 1 2 3", argv[0]);
-        return 0;
-    }
+	init_days();
+	parseargs(argc, argv);
 
-
-    int i, day;
-
-    for (i = 1; i < argc; i += 1) {
-        day = atoi(argv[i]);
-        printf("Day %d:", day);
-        run_day(day);
-    }
-
-    return 0;
+	int i, day;
+	if (flags & RUN_ALL) {
+		run_all();
+	} else if (flags & RUN_LAST) {
+		run_last();
+	} else if (optind == argc) {
+		printf("Input a day to run: ");
+		scanf("%d", &day);
+		run_day(day - 1);
+	} else {
+		for (i = optind; i < argc; i += 1) {
+			day = atoi(argv[i]);
+			run_day(day - 1);
+		}
+	}
+	return 0;
 }
 
-static void run_day(int n)
+static void parseargs(int argc, char **argv)
 {
-    size_t idx = n - 1;
+	int opt;
 
-    if (days[idx] != NULL) {
-        putchar('\n');
-        (*days[idx])();
-    } else {
-        printf(" No solution for this day yet. \n");
-    }
-
+	while ((opt = getopt(argc, argv, "alepvt")) != -1) {
+		switch(opt) {
+			case 'a':
+				flags |= RUN_ALL;
+				break;
+			case 'l':
+				flags |= RUN_LAST;
+				break;
+			case 'e':
+				flags |= RUN_EXAMPLES;
+				break;
+			case 'p':
+				flags |= PROFILE;
+				break;
+			case 'v':
+				flags |= VERBOSE;
+				break;
+			case 't':
+				flags |= TEST;
+				break;
+			default:
+				print_help(argv[0]);
+				exit(EXIT_FAILURE);
+		}
+	}
 }
+
+static void print_help(const char *invname)
+{
+	fprintf(stderr, "Usage: %s [-alepvt] days...\n", invname);
+}
+
